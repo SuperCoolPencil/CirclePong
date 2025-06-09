@@ -15,7 +15,7 @@ const int HEIGHT = 40;
 const int centerX = WIDTH / 2;
 const int centerY = HEIGHT / 2;
 const double pi = 3.14159;
-const double radius = 15.0;
+const double radius = 25.0;
 const double paddleSize = 0.523599;
 
 class Game {
@@ -84,6 +84,12 @@ public:
     bool paddleHit(double angle) {
         double diff = abs(angle - paddle);
         if (diff > pi) diff = 2 * pi - diff;
+
+        if (diff <= paddleSize / 2) {
+            vx += 0.01;
+            vy += 0.01; // increase speed on hit
+        }
+    
         return diff <= paddleSize / 2;
     }
     
@@ -141,7 +147,7 @@ public:
         clear();
         
         // boundary
-        drawCircle(centerX, centerY, (int)(radius * 0.5), '.');
+        drawCircle(centerX, centerY, (int)(radius), '.');
         
         // paddle
         for (double a = paddle - paddleSize/2; a <= paddle + paddleSize/2; a += 0.05) {
