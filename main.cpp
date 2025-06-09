@@ -151,30 +151,25 @@ public:
 
     void input()
     {
-        double angleToBall = atan2(by, bx);
-        if (angleToBall < 0)
-            angleToBall += 2 * pi;
-
-        double jitter = ((rand() % 201) - 100) * (pi / 1800.0); // ±100 steps of 0.1°
-        angleToBall += jitter;
-
-        double diff = angleToBall - paddle;
-        if (diff > pi)
-            diff -= 2 * pi;
-        if (diff < -pi)
-            diff += 2 * pi;
-
-        if (diff < -0.05)
+        if (_kbhit())
         {
-            paddle -= 0.15;
-            if (paddle < 0)
-                paddle += 2 * pi;
-        }
-        else if (diff > 0.05)
-        {
-            paddle += 0.15;
-            if (paddle >= 2 * pi)
-                paddle -= 2 * pi;
+            char key = _getch();
+            if (key == 'a' || key == 'A')
+            {
+                paddle -= 0.15;
+                if (paddle < 0)
+                    paddle += 2 * pi;
+            }
+            if (key == 'd' || key == 'D')
+            {
+                paddle += 0.15;
+                if (paddle >= 2 * pi)
+                    paddle -= 2 * pi;
+            }
+            if (key == 'q' || key == 'Q')
+            {
+                running = false;
+            }
         }
     }
 
@@ -183,14 +178,14 @@ public:
         clear();
 
         // boundary
-        drawCircle(centerX, centerY, (int)(radius), '_');
+        drawCircle(centerX, centerY, (int)(radius), '.');
 
         // paddle
         for (double a = paddle - paddleSize / 2; a <= paddle + paddleSize / 2; a += 0.05)
         {
             int px = centerX + (int)(radius * cos(a));
             int py = centerY + (int)(radius * sin(a) * 0.5);
-            put(px, py, '#');
+            put(px, py, 'X');
         }
 
         // ball
