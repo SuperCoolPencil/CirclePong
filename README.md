@@ -6,7 +6,9 @@ I was bored of loading screens.
 So I made CirclePong (while waiting 😂) 
 
 > A circular Pong (its much better than progress bars!)
+
 > Play it yourself or watch it play automatically.
+
 > Built in C++ so its as light as possible!
 
 ## Overview
