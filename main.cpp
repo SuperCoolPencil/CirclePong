@@ -16,7 +16,7 @@ const int centerX = WIDTH / 2;
 const int centerY = HEIGHT / 2;
 const double pi = 3.14159;
 const double radius = 15.0;
-const double paddleSize = 0.8;
+const double paddleSize = 0.523599;
 
 class Game {
 private:
@@ -44,7 +44,7 @@ private:
 public:
     Game() {
         bx = 0; by = 0;
-        vx = 0.4; vy = 0.3;
+        vx = 0.5; vy = 0.5;
         paddle = 0;
         points = 0;
         running = true;
