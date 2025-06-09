@@ -4,220 +4,202 @@
 #include <chrono>
 #include <thread>
 #include <cstdlib>
-#ifdef _WIN32
-    #include <conio.h>
-    #include <windows.h>
-#else
-    #include <termios.h>
-    #include <unistd.h>
-    #include <fcntl.h>
-#endif
+#include <string>
+#include <conio.h>
+#include <windows.h>
 
-const int FIELD_SIZE = 21;
-const int CENTER = FIELD_SIZE / 2;
-const double PI = 3.14159265359;
-const double CIRCLE_RADIUS = 8.0;
-const double PADDLE_SIZE = 1.0; // Angular size in radians
+using namespace std;
 
-class CircularPong {
+const int WIDTH = 80;
+const int HEIGHT = 40;
+const int centerX = WIDTH / 2;
+const int centerY = HEIGHT / 2;
+const double pi = 3.14159;
+const double radius = 15.0;
+const double paddleSize = 0.8;
+
+class Game {
 private:
-    double ballX, ballY;
-    double ballVX, ballVY;
-    double paddleAngle;
-    int score;
-    bool gameRunning;
+    double bx, by;
+    double vx, vy;
+    double paddle;
+    int points;
+    bool running;
+    vector<string> screen;
     
-    // Cross-platform keyboard input
-    bool kbhit() {
-#ifdef _WIN32
-        return _kbhit();
-#else
-        int ch = getchar();
-        if (ch != EOF) {
-            ungetc(ch, stdin);
-            return true;
-        }
-        return false;
-#endif
+    void gotoxy(int x, int y) {
+        COORD pos;
+        pos.X = x;
+        pos.Y = y;
+        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
     }
     
-    char getch() {
-#ifdef _WIN32
-        return _getch();
-#else
-        return getchar();
-#endif
-    }
-    
-    void setupTerminal() {
-#ifndef _WIN32
-        struct termios t;
-        tcgetattr(STDIN_FILENO, &t);
-        t.c_lflag &= ~ICANON;
-        t.c_lflag &= ~ECHO;
-        tcsetattr(STDIN_FILENO, TCSANOW, &t);
-        fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
-#endif
-    }
-    
-    void restoreTerminal() {
-#ifndef _WIN32
-        struct termios t;
-        tcgetattr(STDIN_FILENO, &t);
-        t.c_lflag |= ICANON;
-        t.c_lflag |= ECHO;
-        tcsetattr(STDIN_FILENO, TCSANOW, &t);
-#endif
+    void hideCursor() {
+        CONSOLE_CURSOR_INFO info;
+        GetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
+        info.bVisible = false;
+        SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
     }
 
 public:
-    CircularPong() : ballX(0), ballY(0), ballVX(0.3), ballVY(0.2), 
-                     paddleAngle(0), score(0), gameRunning(true) {
-        setupTerminal();
+    Game() {
+        bx = 0; by = 0;
+        vx = 0.4; vy = 0.3;
+        paddle = 0;
+        points = 0;
+        running = true;
+        
+        screen.resize(HEIGHT);
+        for (int i = 0; i < HEIGHT; i++) {
+            screen[i] = string(WIDTH, ' ');
+        }
+        hideCursor();
     }
     
-    ~CircularPong() {
-        restoreTerminal();
+    void clear() {
+        for (int i = 0; i < HEIGHT; i++) {
+            screen[i] = string(WIDTH, ' ');
+        }
     }
     
-    void clearScreen() {
-#ifdef _WIN32
-        system("cls");
-#else
-        system("clear");
-#endif
+    void put(int x, int y, char c) {
+        if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
+            screen[y][x] = c;
+        }
     }
     
-    double distanceFromCenter(double x, double y) {
+    void drawCircle(int cx, int cy, int r, char c) {
+        for (int angle = 0; angle < 360; angle += 3) {
+            double rad = angle * pi / 180.0;
+            int x = cx + (int)(r * cos(rad));
+            int y = cy + (int)(r * sin(rad) * 0.5);
+            put(x, y, c);
+        }
+    }
+    
+    double distance(double x, double y) {
         return sqrt(x * x + y * y);
     }
     
-    bool isPaddleAtPosition(double angle) {
-        double angleDiff = fabs(angle - paddleAngle);
-        if (angleDiff > PI) angleDiff = 2 * PI - angleDiff;
-        return angleDiff <= PADDLE_SIZE / 2;
+    bool paddleHit(double angle) {
+        double diff = abs(angle - paddle);
+        if (diff > pi) diff = 2 * pi - diff;
+        return diff <= paddleSize / 2;
     }
     
     void updateBall() {
-        ballX += ballVX;
-        ballY += ballVY;
+        bx += vx;
+        by += vy;
         
-        double distFromCenter = distanceFromCenter(ballX, ballY);
+        double dist = distance(bx, by);
         
-        // Check collision with circular boundary
-        if (distFromCenter >= CIRCLE_RADIUS) {
-            double ballAngle = atan2(ballY, ballX);
-            if (ballAngle < 0) ballAngle += 2 * PI;
+        if (dist >= radius) {
+            double angle = atan2(by, bx);
+            if (angle < 0) angle += 2 * pi;
             
-            // Check if paddle is at collision point
-            if (isPaddleAtPosition(ballAngle)) {
-                // Bounce off paddle
-                double normalX = ballX / distFromCenter;
-                double normalY = ballY / distFromCenter;
+            if (paddleHit(angle)) {
+                // bounce
+                double nx = bx / dist;
+                double ny = by / dist;
                 
-                double dotProduct = ballVX * normalX + ballVY * normalY;
-                ballVX -= 2 * dotProduct * normalX;
-                ballVY -= 2 * dotProduct * normalY;
+                double dot = vx * nx + vy * ny;
+                vx -= 2 * dot * nx;
+                vy -= 2 * dot * ny;
                 
-                // Move ball slightly inside to prevent sticking
-                ballX = normalX * (CIRCLE_RADIUS - 0.1);
-                ballY = normalY * (CIRCLE_RADIUS - 0.1);
+                // add some randomness
+                vx += (rand() % 21 - 10) * 0.01;
+                vy += (rand() % 21 - 10) * 0.01;
                 
-                score++;
+                bx = nx * (radius - 0.5);
+                by = ny * (radius - 0.5);
+                
+                points++;
             } else {
-                // Game over - ball hit wall without paddle
-                gameRunning = false;
-            }
-        }
-        
-        // Ball can pass through center - no collision there
-    }
-    
-    void handleInput() {
-        if (kbhit()) {
-            char key = getch();
-            switch (key) {
-                case 'a':
-                case 'A':
-                    paddleAngle -= 0.2;
-                    if (paddleAngle < 0) paddleAngle += 2 * PI;
-                    break;
-                case 'd':
-                case 'D':
-                    paddleAngle += 0.2;
-                    if (paddleAngle >= 2 * PI) paddleAngle -= 2 * PI;
-                    break;
-                case 'q':
-                case 'Q':
-                    gameRunning = false;
-                    break;
+                running = false;
             }
         }
     }
     
-    void render() {
-        clearScreen();
-        
-        std::vector<std::vector<char>> field(FIELD_SIZE, std::vector<char>(FIELD_SIZE, ' '));
-        
-        // Draw paddle
-        for (double a = paddleAngle - PADDLE_SIZE/2; a <= paddleAngle + PADDLE_SIZE/2; a += 0.1) {
-            int px = CENTER + (int)(CIRCLE_RADIUS * cos(a));
-            int py = CENTER + (int)(CIRCLE_RADIUS * sin(a));
-            if (px >= 0 && px < FIELD_SIZE && py >= 0 && py < FIELD_SIZE) {
-                field[py][px] = '=';
+    void input() {
+        if (_kbhit()) {
+            char key = _getch();
+            if (key == 'a' || key == 'A') {
+                paddle -= 0.15;
+                if (paddle < 0) paddle += 2 * pi;
+            }
+            if (key == 'd' || key == 'D') {
+                paddle += 0.15;
+                if (paddle >= 2 * pi) paddle -= 2 * pi;
+            }
+            if (key == 'q' || key == 'Q') {
+                running = false;
             }
         }
+    }
+    
+    void draw() {
+        clear();
         
-        // Draw ball
-        int bx = CENTER + (int)ballX;
-        int by = CENTER + (int)ballY;
-        if (bx >= 0 && bx < FIELD_SIZE && by >= 0 && by < FIELD_SIZE) {
-            field[by][bx] = 'O';
+        // boundary
+        drawCircle(centerX, centerY, (int)(radius * 0.5), '.');
+        
+        // paddle
+        for (double a = paddle - paddleSize/2; a <= paddle + paddleSize/2; a += 0.05) {
+            int px = centerX + (int)(radius * cos(a));
+            int py = centerY + (int)(radius * sin(a) * 0.5);
+            put(px, py, '#');
         }
         
-        // Draw center point
-        field[CENTER][CENTER] = '+';
+        // ball
+        int ballX = centerX + (int)bx;
+        int ballY = centerY + (int)(by * 0.5);
+        put(ballX, ballY, 'O');
         
-        // Output field
-        for (int i = 0; i < FIELD_SIZE; i++) {
-            for (int j = 0; j < FIELD_SIZE; j++) {
-                std::cout << field[i][j];
-            }
-            std::cout << std::endl;
+        // center
+        put(centerX, centerY, '+');
+        
+        // render to screen
+        gotoxy(0, 0);
+        for (int i = 0; i < HEIGHT; i++) {
+            cout << screen[i] << endl;
         }
         
-        std::cout << "\nScore: " << score << std::endl;
-        std::cout << "Controls: A/D to move paddle, Q to quit" << std::endl;
-        if (!gameRunning) {
-            std::cout << "GAME OVER! Final Score: " << score << std::endl;
+        cout << "Score: " << points << " | A/D to move, Q to quit";
+        if (!running) {
+            cout << " | GAME OVER!";
         }
     }
     
     void run() {
-        while (gameRunning) {
-            handleInput();
+        draw();
+        
+        while (running) {
+            input();
             updateBall();
-            render();
+            draw();
             
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            this_thread::sleep_for(chrono::milliseconds(80));
         }
         
-        std::cout << "\nPress any key to exit..." << std::endl;
-        getch();
+        gotoxy(0, HEIGHT + 2);
+        cout << "\nPress any key to exit..." << endl;
+        _getch();
     }
 };
 
 int main() {
-    std::cout << "Circular Pong Game" << std::endl;
-    std::cout << "Use A and D keys to move the paddle around the circle" << std::endl;
-    std::cout << "Keep the ball bouncing to increase your score!" << std::endl;
-    std::cout << "Press any key to start..." << std::endl;
+    system("mode 82,45");
+    system("title Circular Pong");
     
-    CircularPong game;
+    cout << "Circular Pong Game" << endl;
+    cout << "Use A and D to move paddle" << endl;
+    cout << "Keep the ball bouncing!" << endl;
+    cout << "Press any key to start..." << endl;
+    
     char dummy;
-    std::cin >> dummy;
+    cin >> dummy;
     
+    Game game;
     game.run();
     
     return 0;
