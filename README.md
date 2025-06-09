@@ -13,7 +13,7 @@ So I made CirclePong (while waiting 😂)
 
 ## Overview
 
-CirclePong is a console-based reinterpretation of the classic Pong game, played on a circular field. Paddle move along the circumference of a circle, deflecting a ball that travels around the perimeter. 
+CirclePong is a console-based reinterpretation of the classic Pong game, played on a circular field. Paddle move along the circumference of a circle, deflecting a ball that travels within a circle
 
 ## Controls
 
