@@ -1,6 +1,13 @@
 # CirclePong
 
-Demo: https://www.youtube.com/watch?v=e9sO4eWFdqs
+I was bored of loading screens.
+> Waiting for builds. Waiting for fetches. Waiting for installs.
+
+So I made CirclePong (while waiting 😂) 
+
+> A circular Pong (its much better than progress bars!)
+> Play it yourself or watch it play automatically.
+> Built in C++ so its as light as possible!
 
 ## Overview
 
