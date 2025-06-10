@@ -12,7 +12,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     // Game Constants
     private static final int WINDOW_WIDTH = 900;
     private static final int WINDOW_HEIGHT = 900;
-    public static final int GAME_AREA_RADIUS = 350;
+    private static final int GAME_AREA_RADIUS = 350;
     private static final int PADDLE_WIDTH = 15;
     private static final int PADDLE_LENGTH = 70;
     private static final int BALL_DIAMETER = 15;
@@ -54,23 +54,22 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         Point gameCenter = new Point(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
         ball = new Ball(gameCenter, INITIAL_BALL_SPEED, BALL_DIAMETER);
 
-        leftPaddle = new Paddle(gameCenter, GAME_AREA_RADIUS, PADDLE_LENGTH, PADDLE_WIDTH, PADDLE_MOVEMENT_SPEED, new Color(0, 200, 255), 1, Math.PI);
-        rightPaddle = new Paddle(gameCenter, GAME_AREA_RADIUS, PADDLE_LENGTH, PADDLE_WIDTH, PADDLE_MOVEMENT_SPEED, new Color(255, 80, 120), 2, 0);
+        if (activeGameMode == GameMode.AI_SOLO) {
+            // Solo mode: one paddle, one AI, full 360 movement
+            rightPaddle = new Paddle(gameCenter, GAME_AREA_RADIUS, PADDLE_LENGTH, PADDLE_WIDTH, PADDLE_MOVEMENT_SPEED, Color.CYAN, 0, 0); // PlayerID 0 for full movement
+            rightAi = new AiController(0.12, 0.95, gameCenter, GAME_AREA_RADIUS); // A responsive AI for solo play
+            leftPaddle = null; // No left paddle in this mode
+            leftAi = null;
+            leftPlayerScore = 0;
+            rightPlayerScore = 0;
+        } else {
+            // All other modes: two paddles are initialized
+            leftPaddle = new Paddle(gameCenter, GAME_AREA_RADIUS, PADDLE_LENGTH, PADDLE_WIDTH, PADDLE_MOVEMENT_SPEED, new Color(0, 200, 255), 1, Math.PI);
+            rightPaddle = new Paddle(gameCenter, GAME_AREA_RADIUS, PADDLE_LENGTH, PADDLE_WIDTH, PADDLE_MOVEMENT_SPEED, new Color(255, 80, 120), 2, 0);
 
-        // Use new constructor: (responsiveness, accuracy, ...)
-        leftAi = new AiController(0.1, 0.9, gameCenter, GAME_AREA_RADIUS);
-        rightAi = new AiController(0.1, 0.9, gameCenter, GAME_AREA_RADIUS);
-    }
-
-    // NEW METHOD for difficulty adjustment
-    private void adjustAIDifficulty(double responsivenessChange, double accuracyChange) {
-        double newAccuracy = Math.max(0.2, Math.min(1.0, rightAi.getAccuracy() + accuracyChange));
-        double newResponsiveness = Math.max(0.04, Math.min(0.25, rightAi.getResponsiveness() + responsivenessChange));
-
-        leftAi.setAccuracy(newAccuracy);
-        rightAi.setAccuracy(newAccuracy);
-        leftAi.setResponsiveness(newResponsiveness);
-        rightAi.setResponsiveness(newResponsiveness);
+            leftAi = new AiController(0.1, 0.9, gameCenter, GAME_AREA_RADIUS);
+            rightAi = new AiController(0.1, 0.9, gameCenter, GAME_AREA_RADIUS);
+        }
     }
 
     private void startGameLoop() {
@@ -110,47 +109,72 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     }
 
     private void handlePlayerInput() {
-        if (activeGameMode == GameMode.TWO_HUMAN || activeGameMode == GameMode.HUMAN_VS_AI) {
+        // Human controls only apply if the left paddle exists and is player-controlled
+        if (leftPaddle != null && (activeGameMode == GameMode.TWO_HUMAN || activeGameMode == GameMode.HUMAN_VS_AI)) {
             if (keyStates[KeyEvent.VK_W]) leftPaddle.move(-1);
             if (keyStates[KeyEvent.VK_S]) leftPaddle.move(1);
         }
-        if (activeGameMode == GameMode.TWO_HUMAN) {
+        if (rightPaddle != null && activeGameMode == GameMode.TWO_HUMAN) {
             if (keyStates[KeyEvent.VK_UP]) rightPaddle.move(-1);
             if (keyStates[KeyEvent.VK_DOWN]) rightPaddle.move(1);
         }
     }
 
     private void updateAi() {
-        if (activeGameMode == GameMode.HUMAN_VS_AI) {
-            rightAi.updatePaddle(rightPaddle, ball);
-        } else if (activeGameMode == GameMode.TWO_AI || activeGameMode == GameMode.AI_SOLO) {
-            leftAi.updatePaddle(leftPaddle, ball);
-            if (activeGameMode != GameMode.AI_SOLO) {
-                rightAi.updatePaddle(rightPaddle, ball);
-            }
+        // AI updates are handled based on the current game mode
+        switch (activeGameMode) {
+            case HUMAN_VS_AI:
+                if (rightAi != null) rightAi.updatePaddle(rightPaddle, ball);
+                break;
+            case TWO_AI:
+                if (leftAi != null) leftAi.updatePaddle(leftPaddle, ball);
+                if (rightAi != null) rightAi.updatePaddle(rightPaddle, ball);
+                break;
+            case AI_SOLO:
+                if (rightAi != null) rightAi.updatePaddle(rightPaddle, ball);
+                break;
+            default:
+                // No AI action for TWO_HUMAN mode
+                break;
         }
     }
 
     private void handleCollisions() {
         double ballDistance = ball.getDistanceFromCenter();
         if (ballDistance >= GAME_AREA_RADIUS - ball.getSize() / 2.0) {
-            double ballAngle = ball.getAngleFromCenter();
             boolean collisionOccurred = false;
 
-            Paddle paddleToCheck = ball.getX() < getWidth() / 2.0 ? leftPaddle : rightPaddle;
-            if (activeGameMode != GameMode.AI_SOLO && paddleToCheck == leftPaddle && paddleToCheck.isAngleWithinPaddle(ballAngle)) {
-                ball.handlePaddleCollision(paddleToCheck.getAngle());
-                createCollisionParticles(ball.getX(), ball.getY());
-                collisionOccurred = true;
-            } else if (paddleToCheck == rightPaddle && paddleToCheck.isAngleWithinPaddle(ballAngle)) {
-                ball.handlePaddleCollision(paddleToCheck.getAngle());
-                createCollisionParticles(ball.getX(), ball.getY());
-                collisionOccurred = true;
+            if (activeGameMode == GameMode.AI_SOLO) {
+                // --- SOLO MODE COLLISION LOGIC ---
+                if (rightPaddle.isAngleWithinPaddle(ball.getAngleFromCenter())) {
+                    ball.handlePaddleCollision(rightPaddle.getAngle());
+                    createCollisionParticles(ball.getX(), ball.getY());
+                    rightPlayerScore++; // Increment score on successful hit
+                    collisionOccurred = true;
+                }
+            } else {
+                // --- DUAL PADDLE COLLISION LOGIC ---
+                double ballAngle = ball.getAngleFromCenter();
+                Paddle paddleToCheck = ball.getX() < getWidth() / 2.0 ? leftPaddle : rightPaddle;
+                if (paddleToCheck != null && paddleToCheck.isAngleWithinPaddle(ballAngle)) {
+                    ball.handlePaddleCollision(paddleToCheck.getAngle());
+                    createCollisionParticles(ball.getX(), ball.getY());
+                    collisionOccurred = true;
+                }
             }
 
+            // --- HANDLE A MISS ---
             if (!collisionOccurred) {
-                if (ball.getX() < getWidth() / 2.0) rightPlayerScore++;
-                else leftPlayerScore++;
+                if (activeGameMode == GameMode.AI_SOLO) {
+                    rightPlayerScore = 0; // Reset score on miss
+                } else {
+                    // Score based on which side the ball was missed on
+                    if (ball.getX() < getWidth() / 2.0) {
+                        rightPlayerScore++;
+                    } else {
+                        leftPlayerScore++;
+                    }
+                }
                 ball.reset();
             }
         }
@@ -172,12 +196,32 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         rightPlayerScore = 0;
         ball.reset();
         isPaused.set(false);
+        // Re-initializing ensures correct setup for the current mode
+        initializeGameComponents();
     }
 
     private void changeGameMode(GameMode newMode) {
         activeGameMode = newMode;
         resetGame();
-        initializeGameComponents();
+    }
+
+    private void adjustAIDifficulty(double responsivenessChange, double accuracyChange) {
+        // Adjust the AI that is currently active
+        AiController aiToAdjust = null;
+        if (activeGameMode == GameMode.AI_SOLO || activeGameMode == GameMode.HUMAN_VS_AI) {
+            aiToAdjust = rightAi;
+        } else if (activeGameMode == GameMode.TWO_AI) {
+            aiToAdjust = rightAi; // Adjust both AIs equally
+            leftAi.setAccuracy(Math.max(0.2, Math.min(1.0, leftAi.getAccuracy() + accuracyChange)));
+            leftAi.setResponsiveness(Math.max(0.04, Math.min(0.25, leftAi.getResponsiveness() + responsivenessChange)));
+        }
+
+        if (aiToAdjust != null) {
+            double newAccuracy = Math.max(0.2, Math.min(1.0, aiToAdjust.getAccuracy() + accuracyChange));
+            double newResponsiveness = Math.max(0.04, Math.min(0.25, aiToAdjust.getResponsiveness() + responsivenessChange));
+            aiToAdjust.setAccuracy(newAccuracy);
+            aiToAdjust.setResponsiveness(newResponsiveness);
+        }
     }
 
     @Override
@@ -198,38 +242,54 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         g2d.setStroke(new BasicStroke(2));
         g2d.drawOval(centerX - GAME_AREA_RADIUS, centerY - GAME_AREA_RADIUS, GAME_AREA_RADIUS * 2, GAME_AREA_RADIUS * 2);
 
-        g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0));
-        g2d.drawLine(centerX, centerY - GAME_AREA_RADIUS, centerX, centerY + GAME_AREA_RADIUS);
+        // Only draw center line if not in solo mode
+        if (activeGameMode != GameMode.AI_SOLO) {
+            g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0));
+            g2d.drawLine(centerX, centerY - GAME_AREA_RADIUS, centerX, centerY + GAME_AREA_RADIUS);
+        }
     }
 
     private void drawGameElements(Graphics2D g2d) {
         particles.forEach(p -> p.draw(g2d));
-        if (activeGameMode != GameMode.AI_SOLO) leftPaddle.draw(g2d);
-        rightPaddle.draw(g2d);
-        ball.draw(g2d, rightAi.predictBallInterceptAngle(ball));
+
+        if (leftPaddle != null) {
+            leftPaddle.draw(g2d);
+        }
+        if (rightPaddle != null) {
+            rightPaddle.draw(g2d);
+        }
+
+        // Use the active AI to draw the ghost ball prediction
+        AiController activeAi = (activeGameMode == GameMode.AI_SOLO) ? rightAi : rightAi;
+        double prediction = (activeAi != null) ? activeAi.predictBallInterceptAngle(ball) : -1;
+        ball.draw(g2d, prediction);
     }
 
     private void drawUserInterface(Graphics2D g2d) {
-        // ... (score and mode drawing is the same) ...
         g2d.setFont(new Font("Segoe UI", Font.BOLD, 28));
         g2d.setColor(Color.WHITE);
 
-        String leftScoreText = String.format("%s: %d", activeGameMode.getLeftPlayerName(), leftPlayerScore);
-        String rightScoreText = String.format("%s: %d", activeGameMode.getRightPlayerName(), rightPlayerScore);
-
-        if (activeGameMode != GameMode.AI_SOLO) {
+        if (activeGameMode == GameMode.AI_SOLO) {
+            String scoreText = String.format("Score: %d", rightPlayerScore);
+            g2d.drawString(scoreText, 30, 40);
+        } else {
+            String leftScoreText = String.format("%s: %d", activeGameMode.getLeftPlayerName(), leftPlayerScore);
+            String rightScoreText = String.format("%s: %d", activeGameMode.getRightPlayerName(), rightPlayerScore);
             g2d.drawString(leftScoreText, 30, 40);
+            g2d.drawString(rightScoreText, 30, 80);
         }
-        g2d.drawString(rightScoreText, 30, 80);
 
         g2d.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         g2d.setColor(Color.YELLOW);
         g2d.drawString("Mode: " + activeGameMode.getDisplayName(), getWidth() - 220, 40);
 
-        // Display new AI stats
-        g2d.drawString(String.format("AI Responsiveness: %.2f", rightAi.getResponsiveness()), getWidth() - 220, 65);
-        g2d.drawString(String.format("AI Accuracy: %.2f", rightAi.getAccuracy()), getWidth() - 220, 90);
-        g2d.drawString("-/+: Adjust Difficulty", getWidth() - 220, 115);
+        // AI stats display
+        AiController relevantAi = (rightAi != null) ? rightAi : leftAi;
+        if (relevantAi != null) {
+            g2d.drawString(String.format("AI Responsiveness: %.2f", relevantAi.getResponsiveness()), getWidth() - 220, 65);
+            g2d.drawString(String.format("AI Accuracy: %.2f", relevantAi.getAccuracy()), getWidth() - 220, 90);
+            g2d.drawString("-/+: Adjust Difficulty", getWidth() - 220, 115);
+        }
 
         if (isPaused.get()) {
             g2d.setFont(new Font("Segoe UI", Font.BOLD, 50));
@@ -266,7 +326,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
                 case KeyEvent.VK_MINUS:
                     adjustAIDifficulty(-0.01, -0.05); // Decrease responsiveness and accuracy
                     break;
-                case KeyEvent.VK_EQUALS: // Often used for plus sign
+                case KeyEvent.VK_EQUALS:
                 case KeyEvent.VK_PLUS:
                     adjustAIDifficulty(0.01, 0.05); // Increase responsiveness and accuracy
                     break;
@@ -292,7 +352,13 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     }
 }
 
-// Represents the game ball
+// ================================================================================= //
+//                                HELPER CLASSES                                     //
+// ================================================================================= //
+
+/**
+ * Represents the game ball, handling its movement, rendering, and collision physics.
+ */
 class Ball {
     private double x, y, velX, velY, speed;
     private final int size;
@@ -320,7 +386,7 @@ class Ball {
     }
 
     public void draw(Graphics2D g2d, double predictedAngle) {
-        // Draw ghost ball
+        // Draw ghost ball showing AI's predicted intercept point
         if (predictedAngle != -1) {
             g2d.setColor(new Color(255, 255, 255, 60));
             double ghostX = center.x + Math.cos(predictedAngle) * (EnhancedCirclePong.GAME_AREA_RADIUS - size / 2.0);
@@ -328,6 +394,7 @@ class Ball {
             g2d.fillOval((int) (ghostX - size / 2.0), (int) (ghostY - size / 2.0), size, size);
         }
 
+        // Draw the actual ball
         g2d.setColor(Color.WHITE);
         g2d.fillOval((int) (x - size / 2.0), (int) (y - size / 2.0), size, size);
         g2d.setStroke(new BasicStroke(2));
@@ -343,14 +410,16 @@ class Ball {
         velX -= 2 * dotProduct * normalX;
         velY -= 2 * dotProduct * normalY;
 
+        // Add slight randomness to the bounce
         velX += (random.nextDouble() - 0.5) * 0.2;
         velY += (random.nextDouble() - 0.5) * 0.2;
 
-        double currentSpeed = Math.sqrt(velX * velX + velY * velY);
+        // Normalize speed to prevent acceleration
+        double currentSpeed = Math.hypot(velX, velY);
         velX = (velX / currentSpeed) * speed;
         velY = (velY / currentSpeed) * speed;
 
-        // Ensure ball is outside the paddle
+        // Push the ball away from the boundary to prevent it getting stuck
         double distFromCenter = getDistanceFromCenter();
         if (distFromCenter > EnhancedCirclePong.GAME_AREA_RADIUS - size) {
             x = center.x + (x - center.x) * (EnhancedCirclePong.GAME_AREA_RADIUS - size) / distFromCenter;
@@ -358,14 +427,8 @@ class Ball {
         }
     }
 
-    public double getDistanceFromCenter() {
-        return Math.hypot(x - center.x, y - center.y);
-    }
-
-    public double getAngleFromCenter() {
-        return Math.atan2(y - center.y, x - center.x);
-    }
-
+    public double getDistanceFromCenter() { return Math.hypot(x - center.x, y - center.y); }
+    public double getAngleFromCenter() { return Math.atan2(y - center.y, x - center.x); }
     public double getX() { return x; }
     public double getY() { return y; }
     public double getVelX() { return velX; }
@@ -373,16 +436,17 @@ class Ball {
     public int getSize() { return size; }
 }
 
-// Represents a player's paddle
+/**
+ * Represents a player's paddle, handling its movement, rendering, and collision detection.
+ */
 class Paddle {
     private double angle;
     private final Point center;
     private final int radius, length, width;
-    private final double speed; // Max speed
+    private final double speed; // Max speed for human players
     private final Color color;
-    private final int playerId;
+    private final int playerId; // 0=Solo, 1=Left, 2=Right
 
-    // ... (Constructor and other methods remain the same) ...
     public Paddle(Point center, int radius, int length, int width, double speed, Color color, int playerId, double initialAngle) {
         this.center = center;
         this.radius = radius;
@@ -394,7 +458,6 @@ class Paddle {
         this.angle = initialAngle;
     }
 
-
     public void move(int direction) {
         double newAngle = angle + direction * speed;
         if (isValidMove(newAngle)) {
@@ -403,12 +466,8 @@ class Paddle {
         }
     }
 
-    /**
-     * Moves the paddle by a specific angle amount. Used by the AI for smooth movement.
-     * @param angleDelta The amount to move the angle by.
-     */
     public void moveBy(double angleDelta) {
-        // Clamp the movement to the paddle's maximum speed to prevent teleporting
+        // Clamp the AI's movement to a maximum speed
         double maxMove = this.speed * 1.5; // Allow AI to move slightly faster than players
         angleDelta = Math.max(-maxMove, Math.min(maxMove, angleDelta));
 
@@ -442,7 +501,6 @@ class Paddle {
         return ang;
     }
 
-    // ... (draw, isAngleWithinPaddle, and getters remain the same) ...
     public void draw(Graphics2D g2d) {
         double paddleX = center.x + Math.cos(angle) * radius;
         double paddleY = center.y + Math.sin(angle) * radius;
@@ -453,11 +511,12 @@ class Paddle {
         int x2 = (int) (paddleX - Math.cos(perpendicularAngle) * length / 2);
         int y2 = (int) (paddleY - Math.sin(perpendicularAngle) * length / 2);
 
+        // Draw main paddle
         g2d.setColor(color);
         g2d.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g2d.drawLine(x1, y1, x2, y2);
 
-        // Breathing effect
+        // Draw subtle "breathing" glow effect
         float alpha = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() * 0.002);
         g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), (int) (alpha * 150)));
         g2d.setStroke(new BasicStroke(width + 6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -470,7 +529,7 @@ class Paddle {
         double normalizedPaddleAngle = normalizeAngleStatically(angle);
 
         double diff = Math.abs(normalizedBallAngle - normalizedPaddleAngle);
-        if (diff > Math.PI) diff = 2 * Math.PI - diff;
+        if (diff > Math.PI) diff = 2 * Math.PI - diff; // Get the shorter angle difference
         return diff <= paddleArc / 2;
     }
 
@@ -478,7 +537,9 @@ class Paddle {
     public void setAngle(double angle) { this.angle = angle; }
 }
 
-// Controls an AI paddle
+/**
+ * Controls an AI paddle using smooth proportional movement and stable prediction.
+ */
 class AiController {
     private double responsiveness; // How quickly the AI reacts (higher is faster)
     private double accuracy;       // How precise the AI is (higher is more accurate)
@@ -489,10 +550,6 @@ class AiController {
     private double currentInaccuracyOffset = 0.0;
     private int framesUntilNextInaccuracyCheck = 0;
 
-    /**
-     * @param responsiveness A value typically from 0.05 (slow) to 0.2 (very responsive).
-     * @param accuracy A value from 0.0 (wildly inaccurate) to 1.0 (perfect).
-     */
     public AiController(double responsiveness, double accuracy, Point center, int radius) {
         this.responsiveness = responsiveness;
         this.accuracy = accuracy;
@@ -500,14 +557,11 @@ class AiController {
         this.radius = radius;
     }
 
-    /**
-     * Updates the paddle's position using smooth, proportional movement.
-     */
     public void updatePaddle(Paddle paddle, Ball ball) {
         double predictedAngle = predictBallInterceptAngle(ball);
 
         if (predictedAngle != -1) {
-            // -- Stable Inaccuracy Logic --
+            // --- Stable Inaccuracy Logic ---
             // Only recalculate the AI's "mistake" periodically, not every frame.
             framesUntilNextInaccuracyCheck--;
             if (framesUntilNextInaccuracyCheck <= 0) {
@@ -518,23 +572,17 @@ class AiController {
                 } else {
                     this.currentInaccuracyOffset = 0.0; // Perfect accuracy on this check
                 }
-                // Decide when to check for another "mistake" again.
-                framesUntilNextInaccuracyCheck = 10 + (int)(Math.random() * 15); // ~150-400ms
+                framesUntilNextInaccuracyCheck = 10 + (int)(Math.random() * 15); // Check again in ~150-400ms
             }
 
-            // Apply the stable error to the target
             double targetAngle = predictedAngle + this.currentInaccuracyOffset;
 
-            // -- Proportional Movement Logic --
-            // Calculate the shortest distance between current and target angle
+            // --- Proportional Movement Logic ---
             double angleDifference = targetAngle - paddle.getAngle();
             while (angleDifference > Math.PI) angleDifference -= 2 * Math.PI;
             while (angleDifference < -Math.PI) angleDifference += 2 * Math.PI;
 
-            // The amount to move is a fraction of the remaining distance.
-            // This creates smooth acceleration and deceleration.
             double moveDelta = angleDifference * this.responsiveness;
-
             paddle.moveBy(moveDelta);
         }
     }
@@ -545,13 +593,10 @@ class AiController {
         double currentVelX = ball.getVelX();
         double currentVelY = ball.getVelY();
 
-        // Simulate ball's path for up to 120 frames into the future
         for (int i = 0; i < 120; i++) {
             currentX += currentVelX;
             currentY += currentVelY;
             double dist = Math.hypot(currentX - center.x, currentY - center.y);
-
-            // If the predicted position hits the game boundary, return the angle
             if (dist >= radius - ball.getSize() / 2.0) {
                 return Math.atan2(currentY - center.y, currentX - center.x);
             }
@@ -559,14 +604,15 @@ class AiController {
         return -1; // Prediction failed
     }
 
-    // Setters and Getters for dynamic difficulty adjustment
     public void setResponsiveness(double responsiveness) { this.responsiveness = responsiveness; }
     public void setAccuracy(double accuracy) { this.accuracy = accuracy; }
     public double getAccuracy() { return accuracy; }
     public double getResponsiveness() { return responsiveness; }
 }
 
-// Represents a visual particle effect
+/**
+ * Represents a visual particle for effects like collisions.
+ */
 class Particle {
     private double x, y, velX, velY;
     private Color color;
@@ -601,12 +647,14 @@ class Particle {
     }
 }
 
-// Enum for managing game modes
+/**
+ * Enum for managing the different game modes and their properties.
+ */
 enum GameMode {
     HUMAN_VS_AI("Human vs AI", "Human", "AI"),
     TWO_HUMAN("Two Human", "Player 1", "Player 2"),
     TWO_AI("Two AI", "AI 1", "AI 2"),
-    AI_SOLO("AI Solo", "AI", "AI");
+    AI_SOLO("AI Solo", "AI", "AI"); // Player names aren't really used for Solo mode UI
 
     private final String displayName, leftPlayerName, rightPlayerName;
 
