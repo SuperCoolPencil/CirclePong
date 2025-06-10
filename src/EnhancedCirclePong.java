@@ -18,6 +18,8 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     private static final int BALL_DIAMETER = 15;
     private static final double PADDLE_MOVEMENT_SPEED = 0.045;
     private static final double INITIAL_BALL_SPEED = 4.0;
+    public static double SPEED_INCREMENT_ON_HIT = 0.2;
+    public static double MAX_BALL_SPEED = 8.0;
 
     // Game Components
     private Ball ball;
@@ -260,7 +262,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         }
 
         // Use the active AI to draw the ghost ball prediction
-        AiController activeAi = (activeGameMode == GameMode.AI_SOLO) ? rightAi : rightAi;
+        AiController activeAi = rightAi;
         double prediction = (activeAi != null) ? activeAi.predictBallInterceptAngle(ball) : -1;
         ball.draw(g2d, prediction);
     }
@@ -289,6 +291,11 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
             g2d.drawString(String.format("AI Responsiveness: %.2f", relevantAi.getResponsiveness()), getWidth() - 220, 65);
             g2d.drawString(String.format("AI Accuracy: %.2f", relevantAi.getAccuracy()), getWidth() - 220, 90);
             g2d.drawString("-/+: Adjust Difficulty", getWidth() - 220, 115);
+            g2d.drawString(String.format("Ball Speed: %.2f", ball.getSpeed()), getWidth() - 220, 140);
+            g2d.drawString(String.format("Max Speed: %.2f", MAX_BALL_SPEED), getWidth() - 220, 165);
+            g2d.drawString("[/]: Adjust Max Speed", getWidth() - 220, 190);
+            g2d.drawString(String.format("Speed Increment: %.3f", SPEED_INCREMENT_ON_HIT), getWidth() - 220, 215);
+            g2d.drawString(",/.: Adjust Increment", getWidth() - 220, 240);
         }
 
         if (isPaused.get()) {
@@ -329,6 +336,18 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
                 case KeyEvent.VK_EQUALS:
                 case KeyEvent.VK_PLUS:
                     adjustAIDifficulty(0.01, 0.05); // Increase responsiveness and accuracy
+                    break;
+                case KeyEvent.VK_OPEN_BRACKET:
+                    MAX_BALL_SPEED = MAX_BALL_SPEED - 0.05;
+                    break;
+                case KeyEvent.VK_CLOSE_BRACKET:
+                    MAX_BALL_SPEED = MAX_BALL_SPEED + 0.05;
+                    break;
+                case KeyEvent.VK_COMMA:
+                    SPEED_INCREMENT_ON_HIT = SPEED_INCREMENT_ON_HIT - 0.005;
+                    break;
+                case KeyEvent.VK_PERIOD:
+                    SPEED_INCREMENT_ON_HIT = SPEED_INCREMENT_ON_HIT + 0.005;
                     break;
             }
         }
@@ -414,7 +433,10 @@ class Ball {
         velX += (random.nextDouble() - 0.5) * 0.2;
         velY += (random.nextDouble() - 0.5) * 0.2;
 
-        // Normalize speed to prevent acceleration
+        // Increment speed on hit but cap at maximum
+        speed = Math.min(EnhancedCirclePong.MAX_BALL_SPEED, speed + EnhancedCirclePong.SPEED_INCREMENT_ON_HIT);
+
+        // Normalize speed
         double currentSpeed = Math.hypot(velX, velY);
         velX = (velX / currentSpeed) * speed;
         velY = (velY / currentSpeed) * speed;
@@ -434,6 +456,9 @@ class Ball {
     public double getVelX() { return velX; }
     public double getVelY() { return velY; }
     public int getSize() { return size; }
+    public double getSpeed() {
+        return speed;
+    }
 }
 
 /**
