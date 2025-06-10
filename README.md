@@ -22,3 +22,5 @@ CirclePong is a reinterpretation of the classic Pong game, played on a circular 
 * Players control a paddle moving on the circle’s circumference.
 * Players bounce the ball back by aligning their paddle with the ball’s position.
 * Missing the ball results in a score loss
+
+Side note: Theres an old c++ terminal version of the game in the files, cause that happened...
