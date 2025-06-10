@@ -198,7 +198,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         rightPlayerScore = 0;
         ball.reset();
         isPaused.set(false);
-        // Re-initializing ensures correct setup for the current mode
+        // Re-initializing ensures the correct setup for the current mode
         initializeGameComponents();
     }
 
@@ -244,7 +244,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         g2d.setStroke(new BasicStroke(2));
         g2d.drawOval(centerX - GAME_AREA_RADIUS, centerY - GAME_AREA_RADIUS, GAME_AREA_RADIUS * 2, GAME_AREA_RADIUS * 2);
 
-        // Only draw center line if not in solo mode
+        // Only draw the center line if not in solo mode
         if (activeGameMode != GameMode.AI_SOLO) {
             g2d.setStroke(new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0));
             g2d.drawLine(centerX, centerY - GAME_AREA_RADIUS, centerX, centerY + GAME_AREA_RADIUS);
@@ -536,12 +536,12 @@ class Paddle {
         int x2 = (int) (paddleX - Math.cos(perpendicularAngle) * length / 2);
         int y2 = (int) (paddleY - Math.sin(perpendicularAngle) * length / 2);
 
-        // Draw main paddle
+        // Draw the main paddle
         g2d.setColor(color);
         g2d.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g2d.drawLine(x1, y1, x2, y2);
 
-        // Draw subtle "breathing" glow effect
+        // Draw a subtle "breathing" glow effect
         float alpha = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() * 0.002);
         g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), (int) (alpha * 150)));
         g2d.setStroke(new BasicStroke(width + 6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -591,7 +591,7 @@ class AiController {
             framesUntilNextInaccuracyCheck--;
             if (framesUntilNextInaccuracyCheck <= 0) {
                 if (Math.random() > this.accuracy) {
-                    // The magnitude of the error depends on the AI's accuracy level.
+                    // The size of the error depends on the AI's accuracy level.
                     double errorMagnitude = (1.0 - this.accuracy) * 0.6;
                     this.currentInaccuracyOffset = (Math.random() - 0.5) * errorMagnitude;
                 } else {
@@ -642,11 +642,11 @@ class Particle {
     private double x, y, velX, velY;
     private Color color;
     private float alpha = 1.0f;
-    private final Random random = new Random();
 
     public Particle(double x, double y) {
         this.x = x;
         this.y = y;
+        Random random = new Random();
         double angle = random.nextDouble() * 2 * Math.PI;
         double speed = random.nextDouble() * 2 + 1;
         velX = Math.cos(angle) * speed;
