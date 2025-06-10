@@ -15,7 +15,7 @@ So I made CirclePong (while waiting 😂)
 
 ## Overview
 
-CirclePong is a reinterpretation of the classic Pong game, played on a circular field. Paddle move along the circumference of a circle, deflecting a ball that travels within a circle
+CirclePong is a reinterpretation of the classic Pong game, played on a circular field. Paddles move along the circumference of a circle, deflecting a ball that has to remain within the circle!
 
 ## Gameplay
 
