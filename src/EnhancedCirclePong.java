@@ -12,7 +12,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     // Game Constants
     private static final int WINDOW_WIDTH = 900;
     private static final int WINDOW_HEIGHT = 900;
-    private static final int GAME_AREA_RADIUS = 350;
+    static final int GAME_AREA_RADIUS = 350;
     private static final int PADDLE_WIDTH = 15;
     private static final int PADDLE_LENGTH = 70;
     private static final int BALL_DIAMETER = 15;
