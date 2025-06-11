@@ -10,9 +10,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class EnhancedCirclePong extends JPanel implements Runnable {
 
     // Game Constants
-    private static final int WINDOW_WIDTH = 900;
-    private static final int WINDOW_HEIGHT = 900;
-    static final int GAME_AREA_RADIUS = 350;
+    private static final int WINDOW_WIDTH = 800;
+    private static final int WINDOW_HEIGHT = 800;
+    static final int GAME_AREA_RADIUS = 300;
     private static final int PADDLE_WIDTH = 15;
     private static final int PADDLE_LENGTH = 70;
     private static final int BALL_DIAMETER = 15;
@@ -50,6 +50,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         setBackground(new Color(10, 10, 20));
         setFocusable(true);
         addKeyListener(new KeyInputAdapter());
+        setBorder(BorderFactory.createEmptyBorder());
     }
 
     private void initializeGameComponents() {
@@ -238,8 +239,8 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     }
 
     private void drawGameArena(Graphics2D g2d) {
-        int centerX = getWidth() / 2;
-        int centerY = getHeight() / 2;
+        int centerX = WINDOW_WIDTH / 2;
+        int centerY = WINDOW_HEIGHT / 2;
         g2d.setColor(new Color(30, 30, 40));
         g2d.setStroke(new BasicStroke(2));
         g2d.drawOval(centerX - GAME_AREA_RADIUS, centerY - GAME_AREA_RADIUS, GAME_AREA_RADIUS * 2, GAME_AREA_RADIUS * 2);
@@ -527,25 +528,22 @@ class Paddle {
     }
 
     public void draw(Graphics2D g2d) {
-        double paddleX = center.x + Math.cos(angle) * radius;
-        double paddleY = center.y + Math.sin(angle) * radius;
-        double perpendicularAngle = angle + Math.PI / 2;
-
-        int x1 = (int) (paddleX + Math.cos(perpendicularAngle) * length / 2);
-        int y1 = (int) (paddleY + Math.sin(perpendicularAngle) * length / 2);
-        int x2 = (int) (paddleX - Math.cos(perpendicularAngle) * length / 2);
-        int y2 = (int) (paddleY - Math.sin(perpendicularAngle) * length / 2);
+        double halfArcLength = length / (2.0 * radius);
+        double x1 = center.x + Math.cos(angle - halfArcLength) * radius;
+        double y1 = center.y + Math.sin(angle - halfArcLength) * radius;
+        double x2 = center.x + Math.cos(angle + halfArcLength) * radius;
+        double y2 = center.y + Math.sin(angle + halfArcLength) * radius;
 
         // Draw the main paddle
         g2d.setColor(color);
         g2d.setStroke(new BasicStroke(width, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2d.drawLine(x1, y1, x2, y2);
+        g2d.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 
         // Draw a subtle "breathing" glow effect
         float alpha = 0.5f + 0.5f * (float) Math.sin(System.currentTimeMillis() * 0.002);
         g2d.setColor(new Color(color.getRed(), color.getGreen(), color.getBlue(), (int) (alpha * 150)));
         g2d.setStroke(new BasicStroke(width + 6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2d.drawLine(x1, y1, x2, y2);
+        g2d.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
     }
 
     public boolean isAngleWithinPaddle(double ballAngle) {
