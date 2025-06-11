@@ -17,7 +17,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     private static final int PADDLE_LENGTH = 70;
     private static final int BALL_DIAMETER = 15;
     private static final double PADDLE_MOVEMENT_SPEED = 0.045;
-    private static final double INITIAL_BALL_SPEED = 4.0;
+    static final double INITIAL_BALL_SPEED = 4.0;
     public static double SPEED_INCREMENT_ON_HIT = 0.2;
     public static double MAX_BALL_SPEED = 8.0;
 
@@ -114,12 +114,12 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     private void handlePlayerInput() {
         // Human controls only apply if the left paddle exists and is player-controlled
         if (leftPaddle != null && (activeGameMode == GameMode.TWO_HUMAN || activeGameMode == GameMode.HUMAN_VS_AI)) {
-            if (keyStates[KeyEvent.VK_W]) leftPaddle.move(-1);
-            if (keyStates[KeyEvent.VK_S]) leftPaddle.move(1);
+            if (keyStates[KeyEvent.VK_W]) leftPaddle.move(1);
+            if (keyStates[KeyEvent.VK_S]) leftPaddle.move(-1);
         }
         if (rightPaddle != null && activeGameMode == GameMode.TWO_HUMAN) {
-            if (keyStates[KeyEvent.VK_UP]) rightPaddle.move(-1);
-            if (keyStates[KeyEvent.VK_DOWN]) rightPaddle.move(1);
+            if (keyStates[KeyEvent.VK_UP]) rightPaddle.move(1);
+            if (keyStates[KeyEvent.VK_DOWN]) rightPaddle.move(-1);
         }
     }
 
@@ -396,6 +396,7 @@ class Ball {
         x = center.x;
         y = center.y;
         double angle = random.nextDouble() * 2 * Math.PI;
+        speed = EnhancedCirclePong.INITIAL_BALL_SPEED;
         velX = Math.cos(angle) * speed;
         velY = Math.sin(angle) * speed;
     }
