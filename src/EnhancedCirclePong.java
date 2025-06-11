@@ -272,6 +272,9 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         g2d.setFont(new Font("Segoe UI", Font.BOLD, 28));
         g2d.setColor(Color.WHITE);
 
+        AiController relevantAi = (rightAi != null) ? rightAi : leftAi;
+
+        // Draw game stats
         if (activeGameMode == GameMode.AI_SOLO) {
             String scoreText = String.format("Score: %d", rightPlayerScore);
             g2d.drawString(scoreText, 30, 40);
@@ -280,31 +283,47 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
             String rightScoreText = String.format("%s: %d", activeGameMode.getRightPlayerName(), rightPlayerScore);
             g2d.drawString(leftScoreText, 30, 40);
             g2d.drawString(rightScoreText, 30, 80);
+            if (relevantAi != null) {
+                g2d.drawString(String.format("Ball Speed: %.2f", ball.getSpeed()), 30, 120);
+            }
         }
 
         g2d.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         g2d.setColor(Color.YELLOW);
         g2d.drawString("Mode: " + activeGameMode.getDisplayName(), getWidth() - 220, 40);
+        assert relevantAi != null;
+        g2d.drawString(String.format("AI Responsiveness: %.2f", relevantAi.getResponsiveness()), getWidth() - 220, 55);
+        g2d.drawString(String.format("AI Accuracy: %.2f", relevantAi.getAccuracy()), getWidth() - 220,   70);
+        g2d.drawString(String.format("Max Speed: %.2f", MAX_BALL_SPEED), getWidth() - 220,   85);
+        g2d.drawString(String.format("Speed Increment: %.3f", SPEED_INCREMENT_ON_HIT), getWidth() - 220 , 100);
 
-        // AI stats display
-        AiController relevantAi = (rightAi != null) ? rightAi : leftAi;
-        if (relevantAi != null) {
-            g2d.drawString(String.format("AI Responsiveness: %.2f", relevantAi.getResponsiveness()), getWidth() - 220, 65);
-            g2d.drawString(String.format("AI Accuracy: %.2f", relevantAi.getAccuracy()), getWidth() - 220, 90);
-            g2d.drawString("-/+: Adjust Difficulty", getWidth() - 220, 115);
-            g2d.drawString(String.format("Ball Speed: %.2f", ball.getSpeed()), getWidth() - 220, 140);
-            g2d.drawString(String.format("Max Speed: %.2f", MAX_BALL_SPEED), getWidth() - 220, 165);
-            g2d.drawString("[/]: Adjust Max Speed", getWidth() - 220, 190);
-            g2d.drawString(String.format("Speed Increment: %.3f", SPEED_INCREMENT_ON_HIT), getWidth() - 220, 215);
-            g2d.drawString(",/.: Adjust Increment", getWidth() - 220, 240);
-        }
 
         if (isPaused.get()) {
+            // Draw pause text
             g2d.setFont(new Font("Segoe UI", Font.BOLD, 50));
             g2d.setColor(new Color(255, 255, 255, 200));
             String pauseText = "PAUSED";
             FontMetrics metrics = g2d.getFontMetrics();
-            g2d.drawString(pauseText, (getWidth() - metrics.stringWidth(pauseText)) / 2, getHeight() / 2);
+            g2d.drawString(pauseText, (getWidth() - metrics.stringWidth(pauseText)) / 2, getHeight() / 2 - 100);
+
+            // Draw controls and settings when paused
+            if (relevantAi != null) {
+                g2d.setFont(new Font("Segoe UI", Font.PLAIN, 16));
+                int centerX = getWidth() / 2;
+                int startY = getHeight() / 2;
+
+                g2d.drawString("=== CONTROLS ===", centerX - 100, startY);
+                g2d.drawString("W/S: Move Left Paddle", centerX - 100, startY + 25);
+                g2d.drawString("↑/↓: Move Right Paddle", centerX - 100, startY + 50);
+                g2d.drawString("SPACE: Pause Game", centerX - 100, startY + 75);
+                g2d.drawString("R: Reset Game", centerX - 100, startY + 100);
+                g2d.drawString("1-4: Change Game Mode", centerX - 100, startY + 125);
+
+                g2d.drawString("=== AI SETTINGS ===", centerX - 100, startY + 160);
+                g2d.drawString("-/+: Adjust Difficulty", centerX - 100, startY + 235);
+                g2d.drawString("[/]: Adjust Max Speed", centerX - 100, startY + 285);
+                g2d.drawString(",/.: Adjust Increment", centerX - 100, startY + 335);
+            }
         }
     }
 
