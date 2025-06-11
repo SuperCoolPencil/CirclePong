@@ -495,7 +495,7 @@ class Paddle {
 
     public void moveBy(double angleDelta) {
         // Clamp the AI's movement to a maximum speed
-        double maxMove = this.speed * 1.5; // Allow AI to move slightly faster than players
+        double maxMove = this.speed; // Allow AI to move slightly faster than players
         angleDelta = Math.max(-maxMove, Math.min(maxMove, angleDelta));
 
         double newAngle = angle + angleDelta;
