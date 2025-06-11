@@ -20,6 +20,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
     static final double INITIAL_BALL_SPEED = 4.0;
     public static double SPEED_INCREMENT_ON_HIT = 0.2;
     public static double MAX_BALL_SPEED = 8.0;
+    public static boolean SHOW_GHOST_BALL = false;
 
     // Game Components
     private Ball ball;
@@ -162,6 +163,12 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
                 if (paddleToCheck != null && paddleToCheck.isAngleWithinPaddle(ballAngle)) {
                     ball.handlePaddleCollision(paddleToCheck.getAngle());
                     createCollisionParticles(ball.getX(), ball.getY());
+                    // Increment score for the player who hit the ball
+                    if (ball.getX() < getWidth() / 2.0) {
+                        leftPlayerScore++;
+                    } else {
+                        rightPlayerScore++;
+                    }
                     collisionOccurred = true;
                 }
             }
@@ -170,13 +177,10 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
             if (!collisionOccurred) {
                 if (activeGameMode == GameMode.AI_SOLO) {
                     rightPlayerScore = 0; // Reset score on miss
-                } else {
-                    // Score based on which side the ball was missed on
-                    if (ball.getX() < getWidth() / 2.0) {
-                        rightPlayerScore++;
-                    } else {
-                        leftPlayerScore++;
-                    }
+                }
+                else {
+                    rightPlayerScore = 0;
+                    leftPlayerScore = 0;
                 }
                 ball.reset();
             }
@@ -263,9 +267,11 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         }
 
         // Use the active AI to draw the ghost ball prediction
-        AiController activeAi = rightAi;
-        double prediction = (activeAi != null) ? activeAi.predictBallInterceptAngle(ball) : -1;
-        ball.draw(g2d, prediction);
+        if (activeGameMode == GameMode.AI_SOLO || SHOW_GHOST_BALL) {
+            AiController activeAi = rightAi;
+            double prediction = (activeAi != null) ? activeAi.predictBallInterceptAngle(ball) : -1;
+            ball.draw(g2d, prediction);
+        }
     }
 
     private void drawUserInterface(Graphics2D g2d) {
@@ -278,6 +284,7 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         if (activeGameMode == GameMode.AI_SOLO) {
             String scoreText = String.format("Score: %d", rightPlayerScore);
             g2d.drawString(scoreText, 30, 40);
+            g2d.drawString(String.format("Ball Speed: %.2f", ball.getSpeed()), 30, 80);
         } else {
             String leftScoreText = String.format("%s: %d", activeGameMode.getLeftPlayerName(), leftPlayerScore);
             String rightScoreText = String.format("%s: %d", activeGameMode.getRightPlayerName(), rightPlayerScore);
@@ -320,9 +327,9 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
                 g2d.drawString("1-4: Change Game Mode", centerX - 100, startY + 125);
 
                 g2d.drawString("=== AI SETTINGS ===", centerX - 100, startY + 160);
-                g2d.drawString("-/+: Adjust Difficulty", centerX - 100, startY + 235);
-                g2d.drawString("[/]: Adjust Max Speed", centerX - 100, startY + 285);
-                g2d.drawString(",/.: Adjust Increment", centerX - 100, startY + 335);
+                g2d.drawString("-/+: Adjust Difficulty", centerX - 100, startY + 185);
+                g2d.drawString("[/]: Adjust Max Speed", centerX - 100, startY + 210);
+                g2d.drawString(",/.: Adjust Increment", centerX - 100, startY + 235);
             }
         }
     }
@@ -368,6 +375,9 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
                     break;
                 case KeyEvent.VK_PERIOD:
                     SPEED_INCREMENT_ON_HIT = SPEED_INCREMENT_ON_HIT + 0.005;
+                    break;
+                case KeyEvent.VK_H:
+                    SHOW_GHOST_BALL = SHOW_GHOST_BALL ? false : true;
                     break;
             }
         }
@@ -429,8 +439,8 @@ class Ball {
         // Draw ghost ball showing AI's predicted intercept point
         if (predictedAngle != -1) {
             g2d.setColor(new Color(255, 255, 255, 60));
-            double ghostX = center.x + Math.cos(predictedAngle) * (EnhancedCirclePong.GAME_AREA_RADIUS - size / 2.0);
-            double ghostY = center.y + Math.sin(predictedAngle) * (EnhancedCirclePong.GAME_AREA_RADIUS - size / 2.0);
+            double ghostX = center.x + Math.cos(predictedAngle) * EnhancedCirclePong.GAME_AREA_RADIUS;
+            double ghostY = center.y + Math.sin(predictedAngle) * EnhancedCirclePong.GAME_AREA_RADIUS;
             g2d.fillOval((int) (ghostX - size / 2.0), (int) (ghostY - size / 2.0), size, size);
         }
 
