@@ -267,11 +267,10 @@ public class EnhancedCirclePong extends JPanel implements Runnable {
         }
 
         // Use the active AI to draw the ghost ball prediction
-        if (activeGameMode == GameMode.AI_SOLO || SHOW_GHOST_BALL) {
-            AiController activeAi = rightAi;
-            double prediction = (activeAi != null) ? activeAi.predictBallInterceptAngle(ball) : -1;
-            ball.draw(g2d, prediction);
-        }
+        AiController activeAi = rightAi;
+        double prediction = (activeAi != null) ? activeAi.predictBallInterceptAngle(ball) : -1;
+        ball.draw(g2d, prediction);
+
     }
 
     private void drawUserInterface(Graphics2D g2d) {
@@ -437,7 +436,7 @@ class Ball {
 
     public void draw(Graphics2D g2d, double predictedAngle) {
         // Draw ghost ball showing AI's predicted intercept point
-        if (predictedAngle != -1) {
+        if (predictedAngle != -1 && EnhancedCirclePong.SHOW_GHOST_BALL ) {
             g2d.setColor(new Color(255, 255, 255, 60));
             double ghostX = center.x + Math.cos(predictedAngle) * EnhancedCirclePong.GAME_AREA_RADIUS;
             double ghostY = center.y + Math.sin(predictedAngle) * EnhancedCirclePong.GAME_AREA_RADIUS;
